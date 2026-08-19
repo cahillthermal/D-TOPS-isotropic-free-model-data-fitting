@@ -14,19 +14,19 @@ close all;
 clearvars;
 
 % define filenames for the data to be analyzed
-FileNames_data = "C:\Users\d-cahill\OneDrive - University of Illinois - Urbana\Documents\Data\TOPS data\aug1726\peek_265c_b";
+FileNames_data = "DTOPS_AlCaF2_10x_1p0-1p0_100k-100_313p2mV";
 
 % ======================= sample parameters ===============================
 
 % down parameters:
 % Al/CaF2
 
-lambda_down=[20 0.2 0.2];            % cross-plane thermal conductivity (W/m-K) k update on 20250409 by Jenny
+lambda_down=[150 0.2 10];            % cross-plane thermal conductivity (W/m-K) k update on 20250409 by Jenny
 eta_down=[1 1 1];                     % anisotropy of thermal conductivity; eta=kx/ky; kx is in-plane; ky is cross-plane
-C_down=[2.65 0.1 3.0]*1e6;           % volumetric heat capacity (J/m^3-K); 2.73 for CaF2
+C_down=[2.65 0.1 2.73]*1e6;           % volumetric heat capacity (J/m^3-K); 2.73 for CaF2
 h_down=[60 1 1e6]*1e-9;               % thickness (m)
 niu = 0.30;                           % Poisson's ratio of the bulk material
-alpha_T = 60e-6;                     % coefficient of thermal expansion (CTE) of the bulk material (K^(-1))
+alpha_T = 20e-6;                     % coefficient of thermal expansion (CTE) of the bulk material (K^(-1))
 
 % up parameter: air
 lambda_up=0.028;
@@ -44,13 +44,13 @@ focal_length = 5/obj*40e-3; % focal length of the objective lens
 
 % laser spot size and beam offset
 r_rms=(5/obj)*12.8e-6; % root-mean-square focused pump and probe beam 1/e^2 radius (m); 12.8 for TOPS 2.0
-xoffset=(5/obj)*13.4e-6; % Beam offset (m); pump beam moved downwards by setting 13um move of the gimbal mount 13.4 for TOPS 2.0
+xoffset=(5/obj)*13.5e-6; % Beam offset (m); pump beam moved downwards by setting 13um move of the gimbal mount 13.4 for TOPS 2.0
 C_probe = 0.90;                         % calibrated using CaF_2; depends on the ratio of xoffset and w_rms
 w_1_d = 0.92e-3;                        % probe beam 1/e^2 radius at the detector (updated on 20250407)
 
 % set laser power
-incident_pump=0.2e-3;        % average power of digital power (square wave) pump before lens (W)
-incident_probe=0.1e-3;      % laser power of cw probe  before lens(W)
+incident_pump=1e-3;        % average power of digital power (square wave) pump before lens (W)
+incident_probe=1e-3;      % laser power of cw probe  before lens(W)
 
 % absorbance laser power
 % % Index of refraction of metal coating at the wavelength of the pump laser
@@ -59,8 +59,8 @@ k_metal=8.2;
 % n_metal=2.63; % for NbV Nb0.43V0.57 at lamda 780nm
 % k_metal=3.59;
 sample_reflectance=abs(n_metal-1+(1i)*k_metal)^2/abs(n_metal+1+(1i)*k_metal)^2; % reflectance of the sample surface
-% sample_absorbance=1-sample_reflectance;  % absorbance of sample surface
-sample_absorbance=0.4;  % 0.4 for NbV
+sample_absorbance=1-sample_reflectance;  % absorbance of sample surface
+% sample_absorbance=0.4;  % 0.4 for NbV
 A_pump=incident_pump*lens_transmittance*sample_absorbance*(4.0/pi); % Amplitude of the primary cosine component of the absorbed pump laser
 A_dc_pump=incident_pump*lens_transmittance*sample_absorbance; % total DC component of the absorbed pump;
 A_dc_probe=incident_probe*lens_transmittance*sample_absorbance; % total DC component of the absorbed probe;
