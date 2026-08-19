@@ -14,19 +14,19 @@ close all;
 clearvars;
 
 % define filenames for the data to be analyzed
-FileNames_data = 'DTOPS_AlCaF2_10x_1p0-1p0_100k-100_313p2mV';
+FileNames_data = "C:\Users\d-cahill\OneDrive - University of Illinois - Urbana\Documents\Data\TOPS data\aug1726\peek_265c_b";
 
 % ======================= sample parameters ===============================
 
 % down parameters:
 % Al/CaF2
 
-lambda_down=[149 0.1 9.7];            % cross-plane thermal conductivity (W/m-K) k update on 20250409 by Jenny
+lambda_down=[20 0.2 0.2];            % cross-plane thermal conductivity (W/m-K) k update on 20250409 by Jenny
 eta_down=[1 1 1];                     % anisotropy of thermal conductivity; eta=kx/ky; kx is in-plane; ky is cross-plane
-C_down=[2.44 0.1 2.73]*1e6;           % volumetric heat capacity (J/m^3-K)
-h_down=[75 1 1e6]*1e-9;               % thickness (m)
-niu = 0.26;                           % Poisson's ratio of the bulk material
-alpha_T = 18.85e-6;                   % coefficient of thermal expansion (CTE) of the bulk material (K^(-1))
+C_down=[2.65 0.1 3.0]*1e6;           % volumetric heat capacity (J/m^3-K); 2.73 for CaF2
+h_down=[60 1 1e6]*1e-9;               % thickness (m)
+niu = 0.30;                           % Poisson's ratio of the bulk material
+alpha_T = 60e-6;                     % coefficient of thermal expansion (CTE) of the bulk material (K^(-1))
 
 % up parameter: air
 lambda_up=0.028;
@@ -43,14 +43,14 @@ lens_transmittance = 0.85; % transmittance of lens for pump laser, 0.94 for 1x, 
 focal_length = 5/obj*40e-3; % focal length of the objective lens
 
 % laser spot size and beam offset
-r_rms=(5/obj)*12.8e-6; % root-mean-square focused pump and probe beam 1/e^2 radius (m)
-xoffset=(5/obj)*13.5e-6; % Beam offset (m); pump beam moved downwards by setting 13um move of the gimbal mount
-C_probe = 0.87;                         % calibrated using CaF_2; depends on the ratio of xoffset and w_rms
+r_rms=(5/obj)*12.8e-6; % root-mean-square focused pump and probe beam 1/e^2 radius (m); 12.8 for TOPS 2.0
+xoffset=(5/obj)*13.4e-6; % Beam offset (m); pump beam moved downwards by setting 13um move of the gimbal mount 13.4 for TOPS 2.0
+C_probe = 0.90;                         % calibrated using CaF_2; depends on the ratio of xoffset and w_rms
 w_1_d = 0.92e-3;                        % probe beam 1/e^2 radius at the detector (updated on 20250407)
 
 % set laser power
-incident_pump=1e-3;        % average power of digital power (square wave) pump before lens (W)
-incident_probe=1e-3;    % laser power of cw probe  before lens(W)
+incident_pump=0.2e-3;        % average power of digital power (square wave) pump before lens (W)
+incident_probe=0.1e-3;      % laser power of cw probe  before lens(W)
 
 % absorbance laser power
 % % Index of refraction of metal coating at the wavelength of the pump laser
@@ -59,9 +59,17 @@ k_metal=8.2;
 % n_metal=2.63; % for NbV Nb0.43V0.57 at lamda 780nm
 % k_metal=3.59;
 sample_reflectance=abs(n_metal-1+(1i)*k_metal)^2/abs(n_metal+1+(1i)*k_metal)^2; % reflectance of the sample surface
-sample_absorbance=1-sample_reflectance;  % absorbance of sample surface
+% sample_absorbance=1-sample_reflectance;  % absorbance of sample surface
+sample_absorbance=0.4;  % 0.4 for NbV
 A_pump=incident_pump*lens_transmittance*sample_absorbance*(4.0/pi); % Amplitude of the primary cosine component of the absorbed pump laser
-A_dc=(incident_pump+incident_probe)*lens_transmittance*sample_absorbance; % total DC component of the absorbed pump and probe laser
+A_dc_pump=incident_pump*lens_transmittance*sample_absorbance; % total DC component of the absorbed pump;
+A_dc_probe=incident_probe*lens_transmittance*sample_absorbance; % total DC component of the absorbed probe;
+
+% calculate the estimated steady state heating separately for pump and probe considering the offset
+% conductivity of the bulk material to measure (as set above)
+T_ss_heat_pump_est=2*pi*ss_heat(lambda_down,C_down,h_down,eta_down,lambda_up,C_up,h_up,eta_up,r_rms,A_dc_pump,xoffset);
+T_ss_heat_probe_est=2*pi*ss_heat(lambda_down,C_down,h_down,eta_down,lambda_up,C_up,h_up,eta_up,r_rms,A_dc_probe,0.0);
+T_ss_heat_est = T_ss_heat_pump_est+T_ss_heat_probe_est
 
 % ====================== Air lens parameters ================================
 %
@@ -85,7 +93,7 @@ reflection.dphidT = -6e-5;
 
 % fitting1 fits lambda_down(3) and alpha_T using in-phase_and_out-of-phase
 % fitting2 fits lambda_down(3) using ratio
-% set one of them to 1 and the other to 0
+% set one of them to 1 and the other to 0; set both to zero for no fitting
 FDPBD_fitting1=1;
 FDPBD_fitting2=0;
 
@@ -154,10 +162,6 @@ Vcorrected_in=Vcorrected_in(1+highlim:length_raw_data-lowlim);
 Vcorrected_out=Vcorrected_out(1+highlim:length_raw_data-lowlim);
 Vcorrected_ratio=Vcorrected_ratio(1+highlim:length_raw_data-lowlim);
 
-% calculate the estimated steady state heating using the estimated thermal
-% conductivity of the bulk material to measure (as set above)
-T_ss_heat_est=2*pi*ss_heat(lambda_down,C_down,h_down,eta_down,lambda_up,C_up,h_up,eta_up,r_rms,A_dc);
-
 % convert signal (in unit of voltage) to deflection angle (in unit of rad)
 det_factor=(8/pi)^0.5*(focal_length/w_1_d);
 % det_factor is the factor such that:
@@ -222,7 +226,9 @@ theta_model_ratio=-theta_model_in./theta_model_out;
 
 % calculate the steady state heating using the fitted thermal
 % conductivity of the bulk material to measure
-T_ss_heat = 2*pi*ss_heat(lambda_down,C_down,h_down,eta_down,lambda_up,C_up,h_up,eta_up,r_rms,A_dc)
+T_ss_heat_pump=2*pi*ss_heat(lambda_down,C_down,h_down,eta_down,lambda_up,C_up,h_up,eta_up,r_rms,A_dc_pump,xoffset);
+T_ss_heat_probe=2*pi*ss_heat(lambda_down,C_down,h_down,eta_down,lambda_up,C_up,h_up,eta_up,r_rms,A_dc_probe,0.0);
+T_ss_heat = T_ss_heat_pump+T_ss_heat_probe
 
 % plot the fitting of theta
 figure(1)
