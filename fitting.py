@@ -51,6 +51,7 @@ def fit_inout(
     # Approximate covariance and confidence interval calculation
     cov = None
     confidence_interval = None
+    perr = np.array([np.nan, np.nan])
     if res.jac is not None and res.jac.size > 0:
         try:
             # J^T J
@@ -63,7 +64,7 @@ def fit_inout(
         except np.linalg.LinAlgError:
             pass
 
-    return x_sol, res, confidence_interval
+    return x_sol, res, confidence_interval, perr
 
 
 def fit_ratio(
@@ -99,4 +100,16 @@ def fit_ratio(
     res = least_squares(residual_func, x0=[x_guess], verbose=1)
     x_sol = res.x[0]
 
-    return x_sol, res
+    cov = None
+    perr = np.nan
+    if res.jac is not None and res.jac.size > 0:
+        try:
+            jtj = res.jac.T @ res.jac
+            inv_jtj = np.linalg.inv(jtj)
+            s_sq = np.sum(res.fun**2) / max(len(res.fun) - 1, 1)
+            cov = inv_jtj * s_sq
+            perr = np.sqrt(np.diag(cov))[0]
+        except np.linalg.LinAlgError:
+            pass
+
+    return x_sol, res, perr

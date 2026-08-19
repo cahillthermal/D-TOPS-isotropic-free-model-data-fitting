@@ -11,6 +11,10 @@ from fitting import fit_inout, fit_ratio
 def main():
     parser = argparse.ArgumentParser(description="D-TOPS Signal Analysis (Python)")
     parser.add_argument(
+        "file_pos", type=str, nargs="?", default=None,
+        help="Path to raw lock-in data text file (positional)"
+    )
+    parser.add_argument(
         "--file", type=str,
         default="DTOPS_AlCaF2_10x_1p0-1p0_100k-100_313p2mV.txt",
         help="Path to raw lock-in data text file"
@@ -19,23 +23,25 @@ def main():
     parser.add_argument("--no-plot", action="store_true", help="Disable plotting")
     args = parser.parse_args()
 
-    data_path = args.file
+    data_path = args.file_pos if args.file_pos is not None else args.file
     if not os.path.exists(data_path) and not os.path.exists(f"{data_path}.txt"):
         # Fallback search in current directory
         base_name = os.path.basename(data_path)
         if os.path.exists(base_name):
             data_path = base_name
+        elif os.path.exists(f"{base_name}.txt"):
+            data_path = f"{base_name}.txt"
 
     print(f"Loading data from: {data_path}")
 
     # ======================= sample parameters ===============================
     # Al/CaF2
-    lambda_down = [150.0, 0.2, 10]      # cross-plane thermal conductivity (W/m-K)
+    lambda_down = [20.0, 0.2, 0.2]      # cross-plane thermal conductivity (W/m-K)
     eta_down = [1.0, 1.0, 1.0]           # anisotropy of thermal conductivity (kx/ky)
-    C_down = [2.65e6, 0.1e6, 2.73e6]      # volumetric heat capacity (J/m^3-K); 2.73 for CaF2
+    C_down = [2.65e6, 0.1e6, 1.5e6]      # volumetric heat capacity (J/m^3-K); 2.73 for CaF2
     h_down = [60e-9, 1e-9, 1e-3]   # thickness (m)
     niu = 0.30                           # Poisson's ratio of the bulk material
-    alpha_T = 20e-6                      # coefficient of thermal expansion (CTE) (K^-1)
+    alpha_T = 40e-6                      # coefficient of thermal expansion (CTE) (K^-1)
 
     # Air
     lambda_up = 0.028
@@ -53,8 +59,8 @@ def main():
     C_probe = 0.90                      # Probe factor
     w_1_d = 0.92e-3                     # Probe beam 1/e^2 radius at detector
 
-    incident_pump = 1.0e-3               # Average power of pump before lens (W)
-    incident_probe = 1.0e-3              # Laser power of probe before lens (W)
+    incident_pump = 0.2e-3               # Average power of pump before lens (W)
+    incident_probe = 0.1e-3              # Laser power of probe before lens (W)
 
     n_metal = 2.9
     k_metal = 8.2
@@ -62,6 +68,7 @@ def main():
     # k_metal=3.59
     sample_reflectance = (np.abs(n_metal - 1 + 1j * k_metal)**2) / (np.abs(n_metal + 1 + 1j * k_metal)**2)
     sample_absorbance=1-sample_reflectance
+    sample_absorbance=0.40
     A_pump = incident_pump * lens_transmittance * sample_absorbance * (4.0 / np.pi)
     A_dc_pump = incident_pump * lens_transmittance * sample_absorbance
     A_dc_probe = incident_probe * lens_transmittance * sample_absorbance
@@ -129,12 +136,17 @@ def main():
     theta_exp_ratio = -theta_exp_in / theta_exp_out
 
     # ============================= fitting ===================================
+    fitted_k = lambda_down[2]
+    uncertainty_k = np.nan
+    fitted_alpha = alpha_T
+    uncertainty_alpha = np.nan
+
     if FDPBD_fitting1:
         print("Running FDPBD Fitting 1 (in-phase + out-of-phase)...")
         x_guess = [lambda_down[2], alpha_T]
         bounds = ([0.0, -100.0], [100.0, 100.0])
 
-        x_sol, res, ci = fit_inout(
+        x_sol, res, ci, perr = fit_inout(
             f, theta_exp_in, theta_exp_out,
             x_guess, bounds,
             niu, lambda_down, C_down, h_down, eta_down,
@@ -146,8 +158,13 @@ def main():
         lambda_down[2] = x_sol[0]
         alpha_T = x_sol[1]
 
-        print(f"Fitted bulk thermal conductivity (lambda_down[2]): {lambda_down[2]:.4f} W/m-K")
-        print(f"Fitted bulk CTE (alpha_T): {alpha_T:.4e} 1/K")
+        fitted_k = x_sol[0]
+        uncertainty_k = perr[0]
+        fitted_alpha = x_sol[1]
+        uncertainty_alpha = perr[1]
+
+        print(f"Fitted bulk thermal conductivity (lambda_down[2]): {lambda_down[2]:.4f} +/- {uncertainty_k:.4f} W/m-K")
+        print(f"Fitted bulk CTE (alpha_T): {alpha_T:.4e} +/- {uncertainty_alpha:.4e} 1/K")
         if ci is not None:
             print(f"95% Confidence Interval for lambda_down[2]: {ci[0]}")
             print(f"95% Confidence Interval for alpha_T: {ci[1]}")
@@ -156,7 +173,7 @@ def main():
         print("Running FDPBD Fitting 2 (ratio only)...")
         x_guess = lambda_down[2]
 
-        x_sol, res = fit_ratio(
+        x_sol, res, perr_k = fit_ratio(
             f, v_corr_ratio,
             x_guess,
             niu, alpha_T, lambda_down, C_down, h_down, eta_down,
@@ -166,7 +183,21 @@ def main():
         )
 
         lambda_down[2] = x_sol
-        print(f"Fitted bulk thermal conductivity (lambda_down[2]): {lambda_down[2]:.4f} W/m-K")
+        fitted_k = x_sol
+        uncertainty_k = perr_k
+        print(f"Fitted bulk thermal conductivity (lambda_down[2]): {lambda_down[2]:.4f} +/- {uncertainty_k:.4f} W/m-K")
+
+    # Appending record to results.dat
+    results_file = "results.dat"
+    file_exists = os.path.exists(results_file)
+    filename = os.path.basename(data_path)
+
+    with open(results_file, "a") as f_res:
+        if not file_exists:
+            f_res.write("# filename\tfitted_thermal_conductivity\tuncertainty_thermal_conductivity\tfitted_CTE\tuncertainty_CTE\n")
+        f_res.write(f"{filename}\t{fitted_k:.6e}\t{uncertainty_k:.6e}\t{fitted_alpha:.6e}\t{uncertainty_alpha:.6e}\n")
+
+    print(f"Appended fitting results for {filename} to {results_file}")
 
     # ============================= fitting results ===========================
     print("Calculating final fitted model prediction...")
