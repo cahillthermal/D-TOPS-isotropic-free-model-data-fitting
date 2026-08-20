@@ -1,0 +1,9 @@
+# Virtual environment
+.venv/
+
+# Python bytecode caching
+**/__pycache__/
+*.pyc
+
+# Output and results data
+results.txt

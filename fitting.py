@@ -45,7 +45,7 @@ def fit_inout(
         return theta_model_norm - y_data_norm
 
     lb, ub = bounds
-    res = least_squares(residual_func, x0=x_guess, bounds=(lb, ub), verbose=1)
+    res = least_squares(residual_func, x0=x_guess, bounds=(lb, ub), verbose=0) # changed verbose from 1 to 0 to suppress printing
 
     x_sol = res.x
     # Approximate covariance and confidence interval calculation

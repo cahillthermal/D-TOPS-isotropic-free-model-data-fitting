@@ -16,7 +16,8 @@ def main():
     )
     parser.add_argument(
         "--file", type=str,
-        default="DTOPS_AlCaF2_10x_1p0-1p0_100k-100_313p2mV.txt",
+        # default="DTOPS_AlCaF2_10x_1p0-1p0_100k-100_313p2mV.txt",
+        default = r"C:\Users\d-cahill\OneDrive - University of Illinois - Urbana\Documents\Data\TOPS data\aug1726\peek_23c.txt",
         help="Path to raw lock-in data text file"
     )
     parser.add_argument("--save", action="store_true", help="Save experimental and fitted data to test.dat")
@@ -38,7 +39,7 @@ def main():
     # Al/CaF2
     lambda_down = [20.0, 0.2, 0.2]      # cross-plane thermal conductivity (W/m-K)
     eta_down = [1.0, 1.0, 1.0]           # anisotropy of thermal conductivity (kx/ky)
-    C_down = [2.65e6, 0.1e6, 1.5e6]      # volumetric heat capacity (J/m^3-K); 2.73 for CaF2
+    C_down = [2.65e6, 0.1e6, 2.0e6]      # volumetric heat capacity (J/m^3-K); 2.73 for CaF2
     h_down = [60e-9, 1e-9, 1e-3]   # thickness (m)
     niu = 0.30                           # Poisson's ratio of the bulk material
     alpha_T = 40e-6                      # coefficient of thermal expansion (CTE) (K^-1)
@@ -165,9 +166,9 @@ def main():
 
         print(f"Fitted bulk thermal conductivity (lambda_down[2]): {lambda_down[2]:.4f} +/- {uncertainty_k:.4f} W/m-K")
         print(f"Fitted bulk CTE (alpha_T): {alpha_T:.4e} +/- {uncertainty_alpha:.4e} 1/K")
-        if ci is not None:
-            print(f"95% Confidence Interval for lambda_down[2]: {ci[0]}")
-            print(f"95% Confidence Interval for alpha_T: {ci[1]}")
+        # if ci is not None:
+            # print(f"95% Confidence Interval for lambda_down[2]: {ci[0]}")
+            # print(f"95% Confidence Interval for alpha_T: {ci[1]}")
 
     if FDPBD_fitting2:
         print("Running FDPBD Fitting 2 (ratio only)...")
@@ -200,7 +201,7 @@ def main():
     print(f"Appended fitting results for {filename} to {results_file}")
 
     # ============================= fitting results ===========================
-    print("Calculating final fitted model prediction...")
+    # print("Calculating final fitted model prediction...")
     theta_model = theta_iso_free_thermal_expansion_model(
         niu, alpha_T, f,
         lambda_down, C_down, h_down, eta_down,
